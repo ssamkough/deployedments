@@ -1,0 +1,44 @@
+---
+import type { CountRow } from '../lib/stats.ts';
+
+interface Props {
+  caption: string;
+  rows: CountRow[];
+  total: number;
+  /** Header for the first column. */
+  label: string;
+  limit?: number;
+}
+const { caption, rows, total, label, limit } = Astro.props;
+const shown = limit ? rows.slice(0, limit) : rows;
+const max = Math.max(1, ...shown.map((r) => r.count));
+const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+---
+
+<table class="bar-table">
+  <caption>{caption}</caption>
+  <thead>
+    <tr>
+      <th scope="col">{label}</th>
+      <th scope="col" class="num">Count</th>
+      <th scope="col" class="num">Share</th>
+      <th scope="col" class="bar-col"><span class="sr-only">Chart</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      shown.map((row) => (
+        <tr>
+          <th scope="row">{row.label}</th>
+          <td class="num">{row.count}</td>
+          <td class="num">{pct(row.count)}%</td>
+          <td class="bar-col" aria-hidden="true">
+            <div class="bar"><div class="bar__fill" style={`width:${(row.count / max) * 100}%`} /></div>
+          </td>
+        </tr>
+      ))
+    }
+    {shown.length === 0 && <tr><td colspan="4" class="muted">No data.</td></tr>}
+  </tbody>
+</table>
+{limit && rows.length > limit && <p class="muted table-note">Showing top {limit} of {rows.length}.</p>}

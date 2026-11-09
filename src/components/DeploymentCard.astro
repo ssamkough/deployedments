@@ -1,0 +1,79 @@
+---
+import { formatDate } from '../lib/format.ts';
+import { hueFor } from '../lib/provider-meta.ts';
+import type { Deployment } from '../lib/types.ts';
+import DeploymentDetail from './DeploymentDetail.astro';
+import ProviderBadge from './ProviderBadge.astro';
+
+interface Props {
+  deployment: Deployment;
+}
+const { deployment: d } = Astro.props;
+const MAX_CHIPS = 3;
+const chips = d.services.slice(0, MAX_CHIPS);
+const extra = d.services.length - chips.length;
+const hue = hueFor(d.name);
+
+const searchText = [
+  d.name,
+  d.host,
+  ...d.customDomains,
+  d.framework,
+  d.team,
+  d.repo && `${d.repo.owner}/${d.repo.name}`,
+  ...d.services.map((s) => s.label),
+]
+  .filter(Boolean)
+  .join(' ')
+  .toLowerCase();
+---
+
+<li
+  class="card-item"
+  data-id={d.id}
+  data-name={d.name.toLowerCase()}
+  data-provider={d.provider}
+  data-framework={d.framework ?? ''}
+  data-services={d.services.map((s) => s.id).join(' ')}
+  data-service-count={d.services.length}
+  data-created={Date.parse(d.createdAt)}
+  data-updated={Date.parse(d.updatedAt)}
+  data-deployed={d.lastDeployedAt ? Date.parse(d.lastDeployedAt) : 0}
+  data-git={d.repo ? '1' : '0'}
+  data-domain={d.customDomains.length > 0 ? '1' : '0'}
+  data-search={searchText}
+>
+  <article class="card">
+    <div class="card__media">
+      {
+        d.screenshot ? (
+          <img src={d.screenshot} alt={`Screenshot of ${d.name}`} width="800" height="500" loading="lazy" decoding="async" />
+        ) : (
+          <div class="card__placeholder" style={`--hue:${hue}`} aria-hidden="true">
+            <span>{d.name.slice(0, 1).toUpperCase()}</span>
+          </div>
+        )
+      }
+    </div>
+    <div class="card__body">
+      <h3 class="card__title">
+        <button type="button" class="card__open" aria-haspopup="dialog">{d.name}</button>
+      </h3>
+      <p class="card__host mono">{d.host}</p>
+      <ul class="card__badges" role="list">
+        <li><ProviderBadge provider={d.provider} /></li>
+        {d.framework && <li><span class="badge">{d.framework}</span></li>}
+        {d.isSelf && <li><span class="badge badge--self">This site</span></li>}
+        {chips.map((s) => <li><span class="badge" title={s.detail}>{s.label}</span></li>)}
+        {extra > 0 && <li><span class="badge">+{extra} more</span></li>}
+      </ul>
+    </div>
+    <div class="card__foot">
+      <span>Updated <time datetime={d.updatedAt}>{formatDate(d.updatedAt)}</time></span>
+      <a class="card__visit" href={d.url} target="_blank" rel="noopener noreferrer">
+        Visit<span class="sr-only"> {d.name} (opens in a new tab)</span>
+      </a>
+    </div>
+  </article>
+  <template data-detail><DeploymentDetail deployment={d} /></template>
+</li>

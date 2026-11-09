@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+!.env.example
+.netlify/
+# Generated at build time by `npm run collect`
+src/data/generated/
+public/screenshots/
+.DS_Store
+
+# Local editor / agent tooling (not part of the project)
+.cursor/
+.agents/
+.grok/
+skills-lock.json

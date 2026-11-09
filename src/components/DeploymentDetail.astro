@@ -1,0 +1,160 @@
+---
+import { formatDate } from '../lib/format.ts';
+import { KIND_LABELS, PROVIDERS, SOURCE_LABELS } from '../lib/provider-meta.ts';
+import type { Deployment } from '../lib/types.ts';
+import ProviderBadge from './ProviderBadge.astro';
+
+interface Props {
+  deployment: Deployment;
+}
+const { deployment: d } = Astro.props;
+const providerLabel = PROVIDERS[d.provider].label;
+---
+
+<div class="detail">
+  <header class="detail__head">
+    <h2 id="dialog-title">{d.name}</h2>
+    <div class="detail__badges">
+      <ProviderBadge provider={d.provider} />
+      {d.framework && <span class="badge">{d.framework}</span>}
+      {d.isSelf && <span class="badge badge--self">This site</span>}
+    </div>
+  </header>
+
+  {
+    d.screenshot && (
+      <img class="detail__shot" src={d.screenshot} alt={`Screenshot of ${d.name}`} width="800" height="500" decoding="async" />
+    )
+  }
+
+  <ul class="detail__links" role="list">
+    <li>
+      <a class="button button--primary" href={d.url} target="_blank" rel="noopener noreferrer">
+        Visit site<span class="sr-only"> (opens in a new tab)</span>
+      </a>
+    </li>
+    {
+      d.repo && (
+        <li>
+          <a class="button" href={d.repo.url} target="_blank" rel="noopener noreferrer">
+            GitHub repository<span class="sr-only"> (opens in a new tab)</span>
+          </a>
+        </li>
+      )
+    }
+    {
+      d.dashboardUrl && (
+        <li>
+          <a class="button" href={d.dashboardUrl} target="_blank" rel="noopener noreferrer">
+            {providerLabel} dashboard<span class="sr-only"> (opens in a new tab)</span>
+          </a>
+        </li>
+      )
+    }
+  </ul>
+
+  <section class="detail__section">
+    <h3>Services &amp; integrations</h3>
+    {
+      d.services.length > 0 ? (
+        <ul class="services" role="list">
+          {d.services.map((s) => (
+            <li class="service">
+              <span class="service__name">{s.label}</span>
+              <span class="service__kind">{KIND_LABELS[s.kind]}</span>
+              <span class="service__detail">{s.detail ?? SOURCE_LABELS[s.source]}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="muted">None detected.</p>
+      )
+    }
+  </section>
+
+  {
+    d.repo && (
+      <section class="detail__section">
+        <h3>Connected repository</h3>
+        <dl class="facts">
+          <div>
+            <dt>Repository</dt>
+            <dd>
+              <a href={d.repo.url} target="_blank" rel="noopener noreferrer">
+                {d.repo.owner}/{d.repo.name}
+                <span class="sr-only"> (opens in a new tab)</span>
+              </a>
+              {d.repo.private !== undefined && <span class="muted"> · {d.repo.private ? 'private' : 'public'}</span>}
+            </dd>
+          </div>
+          {d.repo.branch && (
+            <div>
+              <dt>Branch</dt>
+              <dd class="mono">{d.repo.branch}</dd>
+            </div>
+          )}
+          {d.repo.language && (
+            <div>
+              <dt>Language</dt>
+              <dd>{d.repo.language}</dd>
+            </div>
+          )}
+          {d.repo.description && (
+            <div>
+              <dt>Description</dt>
+              <dd>{d.repo.description}</dd>
+            </div>
+          )}
+          {d.repo.topics && d.repo.topics.length > 0 && (
+            <div>
+              <dt>Topics</dt>
+              <dd>{d.repo.topics.join(', ')}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
+    )
+  }
+
+  <section class="detail__section">
+    <h3>Details</h3>
+    <dl class="facts">
+      <div>
+        <dt>URL</dt>
+        <dd class="mono">{d.host}</dd>
+      </div>
+      {
+        d.customDomains.length > 0 && (
+          <div>
+            <dt>Custom domains</dt>
+            <dd class="mono">{d.customDomains.join(', ')}</dd>
+          </div>
+        )
+      }
+      <div>
+        <dt>Created</dt>
+        <dd><time datetime={d.createdAt}>{formatDate(d.createdAt)}</time></dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd><time datetime={d.updatedAt}>{formatDate(d.updatedAt)}</time></dd>
+      </div>
+      {
+        d.lastDeployedAt && (
+          <div>
+            <dt>Last deployed</dt>
+            <dd><time datetime={d.lastDeployedAt}>{formatDate(d.lastDeployedAt)}</time></dd>
+          </div>
+        )
+      }
+      {
+        d.metadata.map((m) => (
+          <div>
+            <dt>{m.label}</dt>
+            <dd class={m.code ? 'mono' : undefined}>{m.value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+</div>

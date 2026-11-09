@@ -1,0 +1,72 @@
+---
+import '../styles/global.css';
+import { snapshot } from '../data/snapshot.ts';
+import { formatDate } from '../lib/format.ts';
+
+interface Props {
+  title: string;
+  description?: string;
+  current: 'deployments' | 'stats';
+}
+
+const { title, description = 'Every deployment I have live, across cloud providers.', current } = Astro.props;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a class="brand" href="/">
+          <svg aria-hidden="true" viewBox="0 0 32 32" width="28" height="28" focusable="false">
+            <rect width="32" height="32" rx="7" fill="currentColor"></rect>
+            <rect x="6" y="6" width="9" height="9" rx="2" fill="var(--bg)"></rect>
+            <rect x="17" y="6" width="9" height="9" rx="2" fill="var(--bg)" opacity=".65"></rect>
+            <rect x="6" y="17" width="9" height="9" rx="2" fill="var(--bg)" opacity=".65"></rect>
+            <rect x="17" y="17" width="9" height="9" rx="2" fill="var(--bg)"></rect>
+          </svg>
+          <span>Deployedments</span>
+        </a>
+        <nav aria-label="Main">
+          <ul class="nav">
+            <li><a href="/" aria-current={current === 'deployments' ? 'page' : undefined}>Deployments</a></li>
+            <li><a href="/stats/" aria-current={current === 'stats' ? 'page' : undefined}>Statistics</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+    {
+      snapshot.sample && (
+        <div class="banner" role="note">
+          <div class="container">
+            <strong>Sample data.</strong> No provider tokens were configured at build time. Add <code>NETLIFY_AUTH_TOKEN</code>{' '}
+            and/or <code>VERCEL_TOKEN</code> to see your real deployments.
+          </div>
+        </div>
+      )
+    }
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <p>
+          Data collected at build time on <time datetime={snapshot.collectedAt}>{formatDate(snapshot.collectedAt)}</time>.
+          Rebuild to refresh.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

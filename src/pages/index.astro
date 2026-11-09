@@ -1,0 +1,48 @@
+---
+import Controls from '../components/Controls.astro';
+import DeploymentCard from '../components/DeploymentCard.astro';
+import { snapshot } from '../data/snapshot.ts';
+import Base from '../layouts/Base.astro';
+import '../styles/gallery.css';
+
+const { deployments } = snapshot;
+---
+
+<Base title="Deployedments · All my live deployments" current="deployments">
+  <div class="container">
+    <div class="page-head">
+      <h1>Deployments</h1>
+      <p>{deployments.length} live {deployments.length === 1 ? 'deployment' : 'deployments'} across all my cloud providers.</p>
+    </div>
+
+    <Controls deployments={deployments} />
+
+    <p id="result-count" class="result-count" role="status" aria-live="polite">
+      Showing {deployments.length} of {deployments.length} deployments
+    </p>
+
+    <ul id="grid" class="grid" role="list" aria-label="Deployments">
+      {deployments.map((d) => <DeploymentCard deployment={d} />)}
+    </ul>
+
+    <div id="empty" class="empty" hidden>
+      <p><strong>No deployments match these filters.</strong></p>
+      <p><button type="button" class="button" id="empty-reset">Clear all filters</button></p>
+    </div>
+  </div>
+
+  <dialog id="detail-dialog" class="dialog" aria-labelledby="dialog-title">
+    <div class="dialog__panel">
+      <button type="button" class="dialog__close" id="dialog-close" aria-label="Close details">
+        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18">
+          <path d="M3 3l12 12M15 3 3 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div id="dialog-content"></div>
+    </div>
+  </dialog>
+</Base>
+
+<script>
+  import '../scripts/gallery.ts';
+</script>

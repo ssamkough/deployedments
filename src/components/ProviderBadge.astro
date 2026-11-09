@@ -1,0 +1,22 @@
+---
+import { PROVIDERS } from '../lib/provider-meta.ts';
+import type { ProviderId } from '../lib/types.ts';
+
+interface Props {
+  provider: ProviderId;
+}
+const { provider } = Astro.props;
+---
+
+<span class={`badge badge--${provider}`}>
+  <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 16 16">
+    {
+      provider === 'vercel' ? (
+        <path d="M8 2 15 14H1z" fill="currentColor" />
+      ) : (
+        <path d="M8 1 15 8 8 15 1 8z" fill="currentColor" />
+      )
+    }
+  </svg>
+  {PROVIDERS[provider].label}
+</span>

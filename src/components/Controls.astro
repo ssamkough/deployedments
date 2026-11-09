@@ -1,0 +1,104 @@
+---
+import { PROVIDERS } from '../lib/provider-meta.ts';
+import type { Deployment, ProviderId } from '../lib/types.ts';
+
+interface Props {
+  deployments: Deployment[];
+}
+const { deployments } = Astro.props;
+
+const tally = <T extends string>(values: T[]) => {
+  const map = new Map<T, number>();
+  for (const v of values) map.set(v, (map.get(v) ?? 0) + 1);
+  return map;
+};
+
+const providerCounts = tally(deployments.map((d) => d.provider));
+const providers = (Object.keys(PROVIDERS) as ProviderId[]).filter((p) => providerCounts.has(p));
+
+const frameworks = [...tally(deployments.flatMap((d) => (d.framework ? [d.framework] : []))).entries()].sort(
+  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+);
+const hasUnknownFramework = deployments.some((d) => !d.framework);
+
+const serviceMap = new Map<string, { label: string; count: number }>();
+for (const d of deployments)
+  for (const s of d.services) serviceMap.set(s.id, { label: s.label, count: (serviceMap.get(s.id)?.count ?? 0) + 1 });
+const services = [...serviceMap.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label));
+
+const sorts = [
+  ['name-asc', 'Name (A–Z)'],
+  ['name-desc', 'Name (Z–A)'],
+  ['created-desc', 'Created (newest first)'],
+  ['created-asc', 'Created (oldest first)'],
+  ['updated-desc', 'Updated (most recent first)'],
+  ['updated-asc', 'Updated (least recent first)'],
+  ['deployed-desc', 'Last deployed (most recent first)'],
+  ['deployed-asc', 'Last deployed (least recent first)'],
+  ['provider', 'Provider'],
+  ['framework', 'Framework'],
+  ['services-desc', 'Most services'],
+] as const;
+---
+
+<form id="controls" class="controls" role="search" aria-label="Filter and sort deployments" autocomplete="off">
+  <div class="controls__top">
+    <div class="field field--grow">
+      <label for="q">Search</label>
+      <input id="q" name="q" type="search" placeholder="Name, domain, framework, service…" />
+    </div>
+    <div class="field">
+      <label for="sort">Sort by</label>
+      <select id="sort" name="sort">
+        {sorts.map(([value, label]) => <option value={value}>{label}</option>)}
+      </select>
+    </div>
+    <button type="button" class="button filters-toggle" id="filters-toggle" aria-expanded="true" aria-controls="filter-panel" hidden>
+      Filters
+    </button>
+  </div>
+
+  <div class="controls__panel" id="filter-panel">
+    <fieldset class="field">
+      <legend>Provider</legend>
+      <div class="checks">
+        {
+          providers.map((p) => (
+            <label class="check">
+              <input type="checkbox" name="provider" value={p} />
+              {PROVIDERS[p].label} <span class="muted">({providerCounts.get(p)})</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label for="framework">Framework</label>
+      <select id="framework" name="framework">
+        <option value="">All frameworks</option>
+        {frameworks.map(([name, count]) => <option value={name}>{name} ({count})</option>)}
+        {hasUnknownFramework && <option value="__none__">Not detected</option>}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="service">Service / integration</label>
+      <select id="service" name="service">
+        <option value="">Any</option>
+        {services.map(([id, s]) => <option value={id}>{s.label} ({s.count})</option>)}
+      </select>
+    </div>
+
+    <fieldset class="field">
+      <legend>Only show</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" name="git" value="1" /> Connected to Git</label>
+        <label class="check"><input type="checkbox" name="domain" value="1" /> Custom domain</label>
+        <label class="check"><input type="checkbox" name="withServices" value="1" /> Uses services</label>
+      </div>
+    </fieldset>
+
+    <button type="reset" class="button">Reset</button>
+  </div>
+</form>

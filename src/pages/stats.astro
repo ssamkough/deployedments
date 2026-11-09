@@ -1,0 +1,152 @@
+---
+import BarTable from '../components/BarTable.astro';
+import ProviderBadge from '../components/ProviderBadge.astro';
+import { snapshot } from '../data/snapshot.ts';
+import Base from '../layouts/Base.astro';
+import { formatDate, plural } from '../lib/format.ts';
+import { STALE_AFTER_DAYS, computeStats } from '../lib/stats.ts';
+import '../styles/gallery.css';
+import '../styles/stats.css';
+
+const { deployments, collectedAt } = snapshot;
+const stats = computeStats(deployments, new Date(collectedAt));
+const pct = (n: number) => (stats.total ? Math.round((n / stats.total) * 100) : 0);
+
+const tiles: Array<{ label: string; value: string; note?: string }> = [
+  { label: 'Total deployments', value: String(stats.total) },
+  ...stats.byProvider.map((p) => ({ label: p.label, value: String(p.count), note: `${pct(p.count)}% of total` })),
+  { label: 'Connected to Git', value: String(stats.withRepo), note: `${pct(stats.withRepo)}% of total` },
+  { label: 'Custom domain', value: String(stats.withCustomDomain), note: `${pct(stats.withCustomDomain)}% of total` },
+  { label: 'Using services', value: String(stats.withServices), note: `${stats.averageServices.toFixed(1)} per deployment on average` },
+  { label: `Stale (>${STALE_AFTER_DAYS} days)`, value: String(stats.stale.length), note: 'Not deployed in over a year' },
+];
+
+const highlights = [
+  { label: 'Oldest', d: stats.oldest, date: stats.oldest?.createdAt, verb: 'created' },
+  { label: 'Newest', d: stats.newest, date: stats.newest?.createdAt, verb: 'created' },
+  { label: 'Most recently deployed', d: stats.recentlyDeployed, date: stats.recentlyDeployed?.lastDeployedAt ?? stats.recentlyDeployed?.updatedAt, verb: 'deployed' },
+];
+const providerTotals = stats.byProvider;
+---
+
+<Base title="Statistics · Deployedments" current="stats" description="Totals and breakdowns across all of my deployments.">
+  <div class="container">
+    <div class="page-head">
+      <h1>Statistics</h1>
+      <p>Tallies across {plural(stats.total, 'deployment')}, as of <time datetime={collectedAt}>{formatDate(collectedAt)}</time>.</p>
+    </div>
+
+    {
+      stats.total === 0 ? (
+        <p>No deployments were collected.</p>
+      ) : (
+        <>
+          <section aria-labelledby="overview">
+            <h2 id="overview" class="sr-only">Overview</h2>
+            <dl class="tiles">
+              {tiles.map((t) => (
+                <div class="tile">
+                  <dt>{t.label}</dt>
+                  <dd class="tile__value">{t.value}</dd>
+                  {t.note && <dd class="tile__note">{t.note}</dd>}
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section class="panel" aria-labelledby="split">
+            <h2 id="split">Provider split</h2>
+            <div
+              class="split"
+              role="img"
+              aria-label={providerTotals.map((p) => `${p.label} ${p.count} (${pct(p.count)}%)`).join(', ')}
+            >
+              {
+                providerTotals.map((p) => (
+                  <div class={`split__seg split__seg--${p.key}`} style={`flex:${p.count}`}>
+                    {pct(p.count) >= 12 ? `${p.label} ${pct(p.count)}%` : ''}
+                  </div>
+                ))
+              }
+            </div>
+            <BarTable caption="Deployments per provider" label="Provider" rows={stats.byProvider} total={stats.total} />
+          </section>
+
+          <div class="columns">
+            <section class="panel" aria-labelledby="frameworks">
+              <h2 id="frameworks">Frameworks</h2>
+              <BarTable caption="Deployments per framework" label="Framework" rows={stats.byFramework} total={stats.total} limit={12} />
+            </section>
+            <section class="panel" aria-labelledby="services">
+              <h2 id="services">Services &amp; integrations</h2>
+              <BarTable caption="Deployments using each service" label="Service" rows={stats.byService} total={stats.total} limit={12} />
+            </section>
+            <section class="panel" aria-labelledby="years">
+              <h2 id="years">Created per year</h2>
+              <BarTable caption="Deployments by year created" label="Year" rows={stats.byYearCreated} total={stats.total} />
+            </section>
+            <section class="panel" aria-labelledby="teams">
+              <h2 id="teams">Teams &amp; accounts</h2>
+              <BarTable caption="Deployments per team or account" label="Team" rows={stats.byTeam} total={stats.total} limit={12} />
+            </section>
+            {
+              stats.byLanguage.length > 0 && (
+                <section class="panel" aria-labelledby="languages">
+                  <h2 id="languages">Repository languages</h2>
+                  <BarTable caption="Connected repositories by primary language" label="Language" rows={stats.byLanguage} total={stats.withRepo} limit={12} />
+                </section>
+              )
+            }
+          </div>
+
+          <section class="panel" aria-labelledby="highlights">
+            <h2 id="highlights">Highlights</h2>
+            <ul class="highlights" role="list">
+              {
+                highlights.map(
+                  ({ label, d, date, verb }) =>
+                    d && (
+                      <li>
+                        <span class="muted">{label}</span>
+                        <strong>{d.name}</strong>
+                        <ProviderBadge provider={d.provider} />
+                        <span class="muted">{verb} <time datetime={date}>{formatDate(date)}</time></span>
+                      </li>
+                    ),
+                )
+              }
+            </ul>
+          </section>
+
+          {
+            stats.stale.length > 0 && (
+              <section class="panel" aria-labelledby="stale">
+                <h2 id="stale">Candidates to retire</h2>
+                <p class="muted">Not deployed in over {STALE_AFTER_DAYS} days.</p>
+                <table class="bar-table">
+                  <caption class="sr-only">Stale deployments, oldest first</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Provider</th>
+                      <th scope="col">Last deployed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.stale.slice(0, 15).map((d) => (
+                      <tr>
+                        <th scope="row"><a href={`/#d=${encodeURIComponent(d.id)}`}>{d.name}</a></th>
+                        <td><ProviderBadge provider={d.provider} /></td>
+                        <td><time datetime={d.lastDeployedAt ?? d.updatedAt}>{formatDate(d.lastDeployedAt ?? d.updatedAt)}</time></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )
+          }
+        </>
+      )
+    }
+  </div>
+</Base>
